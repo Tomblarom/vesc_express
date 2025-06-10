@@ -1,0 +1,41 @@
+name: Build HW Configs
+
+on:
+  push:
+    branches:
+      - github-actions-build
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        hwconf:
+          - hwconf/esp32c3
+          - hwconf/esp32c6
+          - hwconf/nrf52840 # ergänze oder entferne HW-Konfigurationen nach Bedarf
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up build environment
+      run: |
+        sudo apt update
+        sudo apt install -y gcc-arm-none-eabi build-essential git python3 python3-pip cmake ninja-build
+
+    - name: Build binaries
+      run: |
+        mkdir build
+        cd build
+        cmake -GNinja -DHWCONF=../${{ matrix.hwconf }} ..
+        ninja
+        cp vesc_express.bin ../${{ matrix.hwconf | replace('/', '_') }}.bin
+
+    - name: Upload binaries as artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: firmware-${{ matrix.hwconf | replace('/', '_') }}
+        path: ${{ matrix.hwconf | replace('/', '_') }}.bin
