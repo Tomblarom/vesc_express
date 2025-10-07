@@ -76,6 +76,21 @@
 
 //#define HW_HEADER					"hw_duet.h"
 //#define HW_SOURCE					"hw_duet.c"
+
+//#define HW_HEADER					"hw_link.h"
+//#define HW_SOURCE					"hw_link.c"
+
+//#define HW_HEADER					"hw_vdisp_900.h"
+//#define HW_SOURCE					"hw_vdisp_900.c"
+
+//#define HW_HEADER					"hw_nanolog.h"
+//#define HW_SOURCE					"hw_nanolog.c"
+
+//#define HW_HEADER					"hw_vbms16.h"
+//#define HW_SOURCE					"hw_vbms16.c"
+
+//#define HW_HEADER					"hw_rmcore.h"
+//#define HW_SOURCE					"hw_rmcore.c"
 #endif
 
 #if !defined(HW_SOURCE) && !defined(HW_SOURCE_ALT)
