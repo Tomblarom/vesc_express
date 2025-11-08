@@ -40,6 +40,19 @@
 #define CAN_TX_GPIO_NUM				1
 #define CAN_RX_GPIO_NUM				0
 
+// SD-card (external flash)
+// #define SD_PIN_MOSI					4
+// #define SD_PIN_MISO					6
+// #define SD_PIN_SCK					5
+// #define SD_PIN_CS					7
+
+// SD-card (internal flash, use partition_storage.csv)
+//  Warning: This option increases wear on the flash sectors and is only intended as a workaround to dedicate an entire dev-board for logging
+//  data, without external SD-card. The ESP32C3 has only 4MB of internal flash and by default no space is left (see partition_ota.csv). When
+//  enabling this option, the partitions for lisp, qml and ota_1 are replaced by one single partition. The downsides are that qml&lisp functionality
+//  is disabled and the chip can be bricked, if an OTA update fails. However it's easier and cheaper to replace a $3 dev-board than the STM32F405 MCU.
+#define HW_USE_FLASH_AS_SD 1
+
 // UART
 #define HW_NO_UART
 

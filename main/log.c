@@ -27,6 +27,7 @@
 #include "buffer.h"
 #include "utils.h"
 #include "esp_vfs_fat_nand.h"
+#include "wear_levelling.h"
 
 #include <string.h>
 #include <stdarg.h>
@@ -53,6 +54,7 @@ char *file_basepath = "/sdcard/";
 // Private variables
 static sdmmc_host_t m_host = SDSPI_HOST_DEFAULT();
 static sdmmc_card_t *m_card = 0;
+static wl_handle_t m_wl_handle = WL_INVALID_HANDLE;
 static spi_nand_flash_device_t *nand_flash_device_handle = 0;
 
 static volatile log_header m_headers[LOG_MAX_FIELDS];
@@ -84,11 +86,11 @@ static void log_task(void *arg) {
 	int64_t ms_last = utils_ms_tot();
 	TickType_t tick_last_fsync = xTaskGetTickCount();
 
-	for (;;) {
-		if (!m_card) {
-			vTaskDelay(10);
-			continue;
-		}
+    for (;;) {
+        if (!(m_card || (m_wl_handle != WL_INVALID_HANDLE) || nand_flash_device_handle)) {
+            vTaskDelay(10);
+            continue;
+        }
 
 		nmea_state_t *s = nmea_get_state();
 
@@ -330,12 +332,39 @@ esp_err_t log_mount_card(int pin_mosi, int pin_miso, int pin_sck, int pin_cs, in
 }
 
 void log_unmount_card(void) {
-	if (m_card) {
-		esp_vfs_fat_sdcard_unmount("/sdcard", m_card);
-		m_card = 0;
-	}
+    if (m_card) {
+        esp_vfs_fat_sdcard_unmount("/sdcard", m_card);
+        m_card = 0;
+    }
 
-	spi_bus_free(m_host.slot);
+    spi_bus_free(m_host.slot);
+}
+
+esp_err_t log_mount_internal_flash(const char *partition_label) {
+    const char *label = partition_label ? partition_label : "storage";
+
+    // Unmount any previous WL mount
+    if (m_wl_handle != WL_INVALID_HANDLE) {
+        esp_vfs_fat_spiflash_unmount_rw_wl("/sdcard", m_wl_handle);
+        m_wl_handle = WL_INVALID_HANDLE;
+    }
+
+    esp_vfs_fat_mount_config_t mount_config = {
+            .format_if_mount_failed = true,
+            .max_files = 5,
+            .allocation_unit_size = 4096
+    };
+
+    file_basepath = "/sdcard/";
+    return esp_vfs_fat_spiflash_mount_rw_wl(
+            "/sdcard", label, &mount_config, &m_wl_handle);
+}
+
+void log_unmount_internal_flash(void) {
+    if (m_wl_handle != WL_INVALID_HANDLE) {
+        esp_vfs_fat_spiflash_unmount_rw_wl("/sdcard", m_wl_handle);
+        m_wl_handle = WL_INVALID_HANDLE;
+    }
 }
 
 bool log_mount_nand_flash(int pin_mosi, int pin_miso, int pin_sck, int pin_cs, int freq) {
@@ -378,19 +407,19 @@ bool log_mount_nand_flash(int pin_mosi, int pin_miso, int pin_sck, int pin_cs, i
 	file_basepath = "/nandflash/";
 	ret = esp_vfs_fat_nand_mount("/nandflash", nand_flash_device_handle, &config);
 
-	if (ret != ESP_OK) {
-		return false;
-	}
+    if (ret != ESP_OK) {
+        return false;
+    }
 
-	return true;
+    return true;
 }
 
 void log_unmount_nand_flash (void) {
-	if (nand_flash_device_handle) {
-		esp_vfs_fat_nand_unmount("/nandflash", nand_flash_device_handle);
-		spi_nand_flash_deinit_device(nand_flash_device_handle);
-		nand_flash_device_handle = 0;
-	}
+    if (nand_flash_device_handle) {
+        esp_vfs_fat_nand_unmount("/nandflash", nand_flash_device_handle);
+        spi_nand_flash_deinit_device(nand_flash_device_handle);
+        nand_flash_device_handle = 0;
+    }
 }
 
 bool log_init(void) {

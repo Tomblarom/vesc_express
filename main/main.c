@@ -155,13 +155,15 @@ void app_main(void) {
 		comm_wifi_init();
 	}
 
-	nmea_init();
-	log_init();
-#ifdef SD_PIN_MOSI
-	log_mount_card(SD_PIN_MOSI, SD_PIN_MISO, SD_PIN_SCK, SD_PIN_CS, SDMMC_FREQ_DEFAULT);
-#endif
+    nmea_init();
+    log_init();
+#ifdef HW_USE_FLASH_AS_SD
+    log_mount_internal_flash(HW_INT_FLASH_PARTITION_LABEL);
+#elif defined(SD_PIN_MOSI)
+    log_mount_card(SD_PIN_MOSI, SD_PIN_MISO, SD_PIN_SCK, SD_PIN_CS, SDMMC_FREQ_DEFAULT);
 #ifdef NAND_PIN_MOSI
-	log_mount_nand_flash(NAND_PIN_MOSI, NAND_PIN_MISO, NAND_PIN_SCK, NAND_PIN_CS, FLASH_FREQ_KHZ);
+    log_mount_nand_flash(NAND_PIN_MOSI, NAND_PIN_MISO, NAND_PIN_SCK, NAND_PIN_CS, FLASH_FREQ_KHZ);
+#endif
 #endif
 
 #ifndef HW_EARLY_LBM_INIT

@@ -29,6 +29,8 @@
 bool log_init(void);
 esp_err_t log_mount_card(int pin_mosi, int pin_miso, int pin_sck, int pin_cs, int freq);
 void log_unmount_card(void);
+esp_err_t log_mount_internal_flash(const char *partition_label);
+void log_unmount_internal_flash(void);
 bool log_mount_nand_flash(int pin_mosi, int pin_miso, int pin_sck, int pin_cs, int freq);
 void log_unmount_nand_flash(void);
 void log_process_packet(unsigned char *data, unsigned int len);

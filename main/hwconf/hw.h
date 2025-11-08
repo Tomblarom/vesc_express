@@ -57,6 +57,12 @@
 #define HW_POST_LISPIF_HOOK()
 #endif
 
+#ifndef HW_USE_FLASH_AS_SD
+#define HW_USE_FLASH_AS_SD 0
+#else
+#define HW_USE_FLASH_AS_SD 1
+#endif
+
 #ifndef LOGS_ENABLED
 // Should contain 0 or 1
 #define LOGS_ENABLED 0
