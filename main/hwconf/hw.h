@@ -59,8 +59,10 @@
 
 #ifndef HW_USE_FLASH_AS_SD
 #define HW_USE_FLASH_AS_SD 0
-#else
-#define HW_USE_FLASH_AS_SD 1
+#endif
+
+#ifndef HW_INT_FLASH_PARTITION_LABEL
+#define HW_INT_FLASH_PARTITION_LABEL "storage"
 #endif
 
 #ifndef LOGS_ENABLED
