@@ -3,7 +3,7 @@
 nvs,data,nvs,,0x6000
 otadata,data,ota,,0x2000
 phy_init,data,phy,,0x1000
-ota_0,app,ota_0,,4096k
-ota_1,app,ota_1,,4096k
-lisp,data,nvs,,512k
-qml,data,nvs,,128k
+ota_0,app,ota_0,,6000k
+ota_1,app,ota_1,,6000k
+lisp,data,nvs,,2048k
+qml,data,nvs,,512k

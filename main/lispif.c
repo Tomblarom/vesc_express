@@ -98,9 +98,9 @@ extern lbm_const_heap_t *lbm_const_heap_state;
 #define LBM_MEMORY_SIZE_KB(kb) LBM_MEMORY_SIZE_64BYTES_TIMES_X((kb * 16))
 #define LBM_BITMAP_SIZE_KB(kb) LBM_MEMORY_BITMAP_SIZE((kb * 16))
 
-#define LBM_PSRAM_HEAP_BYTES   (1024 * 1024)
-#define LBM_PSRAM_MEMORY_KB    1024
-#define LBM_PSRAM_BITMAP_KB    1024
+#define LBM_PSRAM_HEAP_BYTES   (2048 * 1024)
+#define LBM_PSRAM_MEMORY_KB    2048
+#define LBM_PSRAM_BITMAP_KB    2048
 
 void lispif_init(void) {
 #ifndef CONFIG_SPIRAM
@@ -425,8 +425,8 @@ void lispif_process_cmd(unsigned char *data, unsigned int len,
 				commands_printf_lisp("Extensions: %u, max %u\n", lbm_get_num_extensions(), lbm_get_max_extensions());
 				commands_printf_lisp("--(Flash)--\n");
 				int32_t image_size = lbm_image_get_size() - lbm_image_get_write_index();
-				commands_printf_lisp("Size       : %d\n", 512 * 1024);
-				commands_printf_lisp("Imports    : %d\n", (128 * 1024 - lbm_image_get_size()) * 4);
+				commands_printf_lisp("Size       : %d\n", flash_helper_code_size_raw(CODE_IND_LISP));
+				commands_printf_lisp("Imports    : %d\n", flash_helper_code_size_raw(CODE_IND_LISP) - lbm_image_get_size() * 4);
 				commands_printf_lisp("Const Heap : %d\n", lbm_const_heap_state->next * 4);
 				commands_printf_lisp("Image      : %d\n", image_size * 4);
 				commands_printf_lisp("Free       : %d\n", (lbm_image_get_size() - lbm_const_heap_state->next - image_size) * 4);

@@ -51,47 +51,35 @@ foreach(HW_HEADER_PATH ${HW_HEADER_PATHS})
 endforeach()
 
 if(DEFINED HW_NAME AND DEFINED HW_TARGET AND DEFINED HW_FILE_NAME)
+    # Variant HW targets (e.g. esp32s3_n16r8) still build with a base IDF chip target.
+    if(HW_TARGET MATCHES "^(esp32[a-z0-9]+)_.*$")
+        set(HW_IDF_TARGET ${CMAKE_MATCH_1})
+    else()
+        set(HW_IDF_TARGET ${HW_TARGET})
+    endif()
+
     # Get file name without extension
     string(REGEX MATCH "([^/]+)$" HW_FILE ${HW_FILE_NAME})
     string(REPLACE ".h" "" HW_FILE ${HW_FILE})
 
     # IMPORTANT: Set IDF_TARGET before including project.cmake
     if(NOT DEFINED IDF_TARGET)
-        SET(IDF_TARGET ${HW_TARGET})
-    elseif(NOT IDF_TARGET STREQUAL HW_TARGET)
-        message(WARNING "IDF_TARGET (${IDF_TARGET}) does not match HW_TARGET (${HW_TARGET}) from ${HW_NAME}. This may cause build issues.")
+        SET(IDF_TARGET ${HW_IDF_TARGET})
+    elseif(NOT IDF_TARGET STREQUAL HW_IDF_TARGET)
+        message(WARNING "IDF_TARGET (${IDF_TARGET}) does not match HW_IDF_TARGET (${HW_IDF_TARGET}) derived from HW_TARGET (${HW_TARGET}) for ${HW_NAME}. This may cause build issues.")
     endif()
     
     # Pass through hw file paths
     add_compile_definitions(HW_HEADER="${HW_FILE}.h" HW_SOURCE="${HW_FILE}.c")
 
-    # Detect HW_HAS_PSRAM in the hardware header → select PSRAM sdkconfig
-    # Detect HW_FLASH_16MB  in the hardware header → select 16MB flash sdkconfig
-    set(HW_HAS_PSRAM false)
-    set(HW_FLASH_16MB false)
-    file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/${HW_FILE_NAME}" HW_CAP_CHECK)
-    foreach(LINE IN LISTS HW_CAP_CHECK)
-        if(LINE MATCHES "#define[ \t]+HW_HAS_PSRAM")
-            set(HW_HAS_PSRAM true)
-        endif()
-        if(LINE MATCHES "#define[ \t]+HW_FLASH_16MB")
-            set(HW_FLASH_16MB true)
-        endif()
-    endforeach()
-
-    set(SDKCONFIG_DEFAULTS_LIST "sdkconfig.defaults;sdkconfig.defaults.${HW_TARGET}")
-    if(HW_HAS_PSRAM)
-        message(STATUS "HW_HAS_PSRAM detected — enabling PSRAM sdkconfig")
-        list(APPEND SDKCONFIG_DEFAULTS_LIST "sdkconfig.defaults.psram")
+    if(HW_TARGET STREQUAL "esp32s3_n16r8")
+        message(STATUS "Using n16r8 defaults instead of sdkconfig.defaults")
+        set(SDKCONFIG_DEFAULTS_LIST "sdkconfig.defaults.${HW_IDF_TARGET};sdkconfig.defaults.esp32s3_n16r8")
+    else()
+        set(SDKCONFIG_DEFAULTS_LIST "sdkconfig.defaults;sdkconfig.defaults.${HW_TARGET}")
     endif()
-    if(HW_FLASH_16MB)
-        message(STATUS "HW_FLASH_16MB detected — enabling 16MB flash sdkconfig")
-        list(APPEND SDKCONFIG_DEFAULTS_LIST "sdkconfig.defaults.flash_16mb")
-    endif()
-    if(NOT SDKCONFIG_DEFAULTS_LIST STREQUAL "sdkconfig.defaults;sdkconfig.defaults.${HW_TARGET}")
-        string(JOIN ";" SDKCONFIG_DEFAULTS ${SDKCONFIG_DEFAULTS_LIST})
-        set(SDKCONFIG_DEFAULTS "${SDKCONFIG_DEFAULTS}")
-    endif()
+    string(JOIN ";" SDKCONFIG_DEFAULTS ${SDKCONFIG_DEFAULTS_LIST})
+    set(SDKCONFIG_DEFAULTS "${SDKCONFIG_DEFAULTS}")
 
     # Auto-generate QML files if any *.qml files exist alongside the HW config
     get_filename_component(HW_DIR ${HW_FILE_NAME} DIRECTORY)
