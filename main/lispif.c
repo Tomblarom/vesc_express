@@ -98,7 +98,12 @@ extern lbm_const_heap_t *lbm_const_heap_state;
 #define LBM_MEMORY_SIZE_KB(kb) LBM_MEMORY_SIZE_64BYTES_TIMES_X((kb * 16))
 #define LBM_BITMAP_SIZE_KB(kb) LBM_MEMORY_BITMAP_SIZE((kb * 16))
 
+#define LBM_PSRAM_HEAP_BYTES   (1024 * 1024)
+#define LBM_PSRAM_MEMORY_KB    1024
+#define LBM_PSRAM_BITMAP_KB    1024
+
 void lispif_init(void) {
+#ifndef CONFIG_SPIRAM
 #ifdef CONFIG_IDF_TARGET_ESP32S3
 	heap_size = (4096 + 512);
 	mem_size = LBM_MEMORY_SIZE_KB(48);
@@ -107,10 +112,9 @@ void lispif_init(void) {
 	heap_size = (2048 + 512);
 	mem_size = LBM_MEMORY_SIZE_KB(32);
 	bitmap_size = LBM_BITMAP_SIZE_KB(32);
-#else 
+#else
 	#error "Unsupported target"
 #endif
-
 	if (backup.config.wifi_mode == WIFI_MODE_DISABLED &&
 			backup.config.ble_mode == BLE_MODE_DISABLED) {
 		heap_size *= 2;
@@ -122,10 +126,20 @@ void lispif_init(void) {
 		mem_size = LBM_MEMORY_SIZE_KB(64);
 		bitmap_size = LBM_BITMAP_SIZE_KB(64);
 	}
+#endif
 
+#ifdef CONFIG_SPIRAM
+	heap_size = LBM_PSRAM_HEAP_BYTES / sizeof(lbm_cons_t);
+	heap = heap_caps_aligned_alloc(8, heap_size * sizeof(lbm_cons_t), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+	mem_size = LBM_MEMORY_SIZE_KB(LBM_PSRAM_MEMORY_KB);
+	bitmap_size = LBM_BITMAP_SIZE_KB(LBM_PSRAM_BITMAP_KB);
+	memory_array = heap_caps_malloc(mem_size * sizeof(uint32_t), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+	bitmap_array = heap_caps_malloc(bitmap_size * sizeof(uint32_t), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+#else
 	heap = memalign(8, heap_size * sizeof(lbm_cons_t));
-	memory_array = heap_caps_malloc(mem_size * sizeof(uint32_t), MALLOC_CAP_DMA);
-	bitmap_array = heap_caps_malloc(bitmap_size * sizeof(uint32_t), MALLOC_CAP_DMA);
+	memory_array = heap_caps_malloc(mem_size * sizeof(uint32_t), MALLOC_CAP_DMA | MALLOC_CAP_INTERNAL);
+	bitmap_array = heap_caps_malloc(bitmap_size * sizeof(uint32_t), MALLOC_CAP_DMA | MALLOC_CAP_INTERNAL);
+#endif
 
 	if (!heap || !memory_array || !bitmap_array) {
 		commands_printf_lisp("LispBM malloc failed: heap=%p mem=%p bmp=%p (free heap: %u)",

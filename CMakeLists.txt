@@ -65,6 +65,34 @@ if(DEFINED HW_NAME AND DEFINED HW_TARGET AND DEFINED HW_FILE_NAME)
     # Pass through hw file paths
     add_compile_definitions(HW_HEADER="${HW_FILE}.h" HW_SOURCE="${HW_FILE}.c")
 
+    # Detect HW_HAS_PSRAM in the hardware header → select PSRAM sdkconfig
+    # Detect HW_FLASH_16MB  in the hardware header → select 16MB flash sdkconfig
+    set(HW_HAS_PSRAM false)
+    set(HW_FLASH_16MB false)
+    file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/${HW_FILE_NAME}" HW_CAP_CHECK)
+    foreach(LINE IN LISTS HW_CAP_CHECK)
+        if(LINE MATCHES "#define[ \t]+HW_HAS_PSRAM")
+            set(HW_HAS_PSRAM true)
+        endif()
+        if(LINE MATCHES "#define[ \t]+HW_FLASH_16MB")
+            set(HW_FLASH_16MB true)
+        endif()
+    endforeach()
+
+    set(SDKCONFIG_DEFAULTS_LIST "sdkconfig.defaults;sdkconfig.defaults.${HW_TARGET}")
+    if(HW_HAS_PSRAM)
+        message(STATUS "HW_HAS_PSRAM detected — enabling PSRAM sdkconfig")
+        list(APPEND SDKCONFIG_DEFAULTS_LIST "sdkconfig.defaults.psram")
+    endif()
+    if(HW_FLASH_16MB)
+        message(STATUS "HW_FLASH_16MB detected — enabling 16MB flash sdkconfig")
+        list(APPEND SDKCONFIG_DEFAULTS_LIST "sdkconfig.defaults.flash_16mb")
+    endif()
+    if(NOT SDKCONFIG_DEFAULTS_LIST STREQUAL "sdkconfig.defaults;sdkconfig.defaults.${HW_TARGET}")
+        string(JOIN ";" SDKCONFIG_DEFAULTS ${SDKCONFIG_DEFAULTS_LIST})
+        set(SDKCONFIG_DEFAULTS "${SDKCONFIG_DEFAULTS}")
+    endif()
+
     # Auto-generate QML files if any *.qml files exist alongside the HW config
     get_filename_component(HW_DIR ${HW_FILE_NAME} DIRECTORY)
     file(GLOB QMLUI_QML_SRCS "${CMAKE_CURRENT_SOURCE_DIR}/${HW_DIR}/*.qml")
