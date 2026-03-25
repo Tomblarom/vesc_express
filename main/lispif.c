@@ -98,7 +98,12 @@ extern lbm_const_heap_t *lbm_const_heap_state;
 #define LBM_MEMORY_SIZE_KB(kb) LBM_MEMORY_SIZE_64BYTES_TIMES_X((kb * 16))
 #define LBM_BITMAP_SIZE_KB(kb) LBM_MEMORY_BITMAP_SIZE((kb * 16))
 
+#define LBM_PSRAM_HEAP_BYTES   (2048 * 1024)
+#define LBM_PSRAM_MEMORY_KB    2048
+#define LBM_PSRAM_BITMAP_KB    2048
+
 void lispif_init(void) {
+#ifndef CONFIG_SPIRAM
 #ifdef CONFIG_IDF_TARGET_ESP32S3
 	heap_size = (4096 + 512);
 	mem_size = LBM_MEMORY_SIZE_KB(48);
@@ -107,10 +112,9 @@ void lispif_init(void) {
 	heap_size = (2048 + 512);
 	mem_size = LBM_MEMORY_SIZE_KB(32);
 	bitmap_size = LBM_BITMAP_SIZE_KB(32);
-#else 
+#else
 	#error "Unsupported target"
 #endif
-
 	if (backup.config.wifi_mode == WIFI_MODE_DISABLED &&
 			backup.config.ble_mode == BLE_MODE_DISABLED) {
 		heap_size *= 2;
@@ -122,10 +126,20 @@ void lispif_init(void) {
 		mem_size = LBM_MEMORY_SIZE_KB(64);
 		bitmap_size = LBM_BITMAP_SIZE_KB(64);
 	}
+#endif
 
+#ifdef CONFIG_SPIRAM
+	heap_size = LBM_PSRAM_HEAP_BYTES / sizeof(lbm_cons_t);
+	heap = heap_caps_aligned_alloc(8, heap_size * sizeof(lbm_cons_t), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+	mem_size = LBM_MEMORY_SIZE_KB(LBM_PSRAM_MEMORY_KB);
+	bitmap_size = LBM_BITMAP_SIZE_KB(LBM_PSRAM_BITMAP_KB);
+	memory_array = heap_caps_malloc(mem_size * sizeof(uint32_t), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+	bitmap_array = heap_caps_malloc(bitmap_size * sizeof(uint32_t), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+#else
 	heap = memalign(8, heap_size * sizeof(lbm_cons_t));
-	memory_array = heap_caps_malloc(mem_size * sizeof(uint32_t), MALLOC_CAP_DMA);
-	bitmap_array = heap_caps_malloc(bitmap_size * sizeof(uint32_t), MALLOC_CAP_DMA);
+	memory_array = heap_caps_malloc(mem_size * sizeof(uint32_t), MALLOC_CAP_DMA | MALLOC_CAP_INTERNAL);
+	bitmap_array = heap_caps_malloc(bitmap_size * sizeof(uint32_t), MALLOC_CAP_DMA | MALLOC_CAP_INTERNAL);
+#endif
 
 	if (!heap || !memory_array || !bitmap_array) {
 		commands_printf_lisp("LispBM malloc failed: heap=%p mem=%p bmp=%p (free heap: %u)",
@@ -411,8 +425,8 @@ void lispif_process_cmd(unsigned char *data, unsigned int len,
 				commands_printf_lisp("Extensions: %u, max %u\n", lbm_get_num_extensions(), lbm_get_max_extensions());
 				commands_printf_lisp("--(Flash)--\n");
 				int32_t image_size = lbm_image_get_size() - lbm_image_get_write_index();
-				commands_printf_lisp("Size       : %d\n", 512 * 1024);
-				commands_printf_lisp("Imports    : %d\n", (128 * 1024 - lbm_image_get_size()) * 4);
+				commands_printf_lisp("Size       : %d\n", flash_helper_code_size_raw(CODE_IND_LISP));
+				commands_printf_lisp("Imports    : %d\n", flash_helper_code_size_raw(CODE_IND_LISP) - lbm_image_get_size() * 4);
 				commands_printf_lisp("Const Heap : %d\n", lbm_const_heap_state->next * 4);
 				commands_printf_lisp("Image      : %d\n", image_size * 4);
 				commands_printf_lisp("Free       : %d\n", (lbm_image_get_size() - lbm_const_heap_state->next - image_size) * 4);
