@@ -304,8 +304,7 @@ void disp_axs15231_init(int pin_sd0, int pin_sd1, int pin_sd2, int pin_sd3,
 		.init_cmds      = lcd_init_cmds,
 		.init_cmds_size = sizeof(lcd_init_cmds) / sizeof(axs15231b_lcd_init_cmd_t),
 		.flags = {
-			.use_qspi_interface = 1,
-			.use_mipi_interface = 0,
+			.use_qspi_interface = 1
 		},
 	};
 
