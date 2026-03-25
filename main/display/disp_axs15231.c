@@ -25,6 +25,7 @@
 #include "esp_heap_caps.h"
 
 #include "disp_axs15231.h"
+#include "main.h"
 #include "lispif.h"
 #include "lispbm.h"
 #include <string.h>
@@ -38,8 +39,10 @@ static int m_display_width = DISPLAY_WIDTH_PHYS;
 static int m_display_height = DISPLAY_HEIGHT_PHYS;
 static int m_rotation = 0;
 
-#define CHUNK_LINES		30
-#define PIX_BUF_PIXELS	(DISPLAY_HEIGHT_PHYS * CHUNK_LINES)
+#define CHUNK_LINES_LOW	20
+#define CHUNK_LINES_HIGH 80
+
+#define PIX_BUF_PIXELS	(DISPLAY_HEIGHT_PHYS * CHUNK_LINES_HIGH)
 #define PIX_BUF_BYTES	(PIX_BUF_PIXELS * 2)
 
 static esp_lcd_panel_io_handle_t m_io    = NULL;
@@ -90,47 +93,31 @@ static inline uint16_t to_disp_color(uint32_t rgb) {
 	return (uint16_t)hi | ((uint16_t)lo << 8);
 }
 
-static inline uint32_t fetch_rgb888(image_buffer_t *img, uint32_t idx, color_t *colors) {
-	uint32_t rgb = 0;
-	int cur_x = idx % img->width;
-	int cur_y = idx / img->width;
-	switch (img->fmt) {
-	case indexed2:
-		if (colors) {
-			int ci = (img->data[idx >> 3] >> (7 - (idx & 7))) & 1;
-			rgb = COLOR_TO_RGB888(colors[ci], cur_x, cur_y);
-		}
-		break;
-	case indexed4:
-		if (colors) {
-			int bit = (3 - (idx & 3)) * 2;
-			int ci  = (img->data[idx >> 2] >> bit) & 3;
-			rgb = COLOR_TO_RGB888(colors[ci], cur_x, cur_y);
-		}
-		break;
-	case indexed16:
-		if (colors) {
-			int bit = (1 - (idx & 1)) * 4;
-			int ci  = (img->data[idx >> 1] >> bit) & 0xF;
-			rgb = COLOR_TO_RGB888(colors[ci], cur_x, cur_y);
-		}
-		break;
-	case rgb332: {
-		uint8_t p = img->data[idx];
-		rgb = ((uint32_t)((p >> 5) & 7) << (16+5)) | ((uint32_t)((p >> 2) & 7) << (8+5)) | ((uint32_t)(p & 3) << 6);
-		break;
-	}
-	case rgb565: {
-		uint16_t p = ((uint16_t)img->data[2*idx] << 8) | img->data[2*idx+1];
-		rgb = ((uint32_t)(p >> 11) << (16+3)) | ((uint32_t)((p >> 5) & 0x3F) << (8+2)) | ((uint32_t)(p & 0x1F) << 3);
-		break;
-	}
-	case rgb888:
-		rgb = (uint32_t)img->data[3*idx] << 16 | (uint32_t)img->data[3*idx+1] << 8 | img->data[3*idx+2];
-		break;
-	default: break;
-	}
-	return rgb;
+static inline uint16_t fetch_rgb565(image_buffer_t *img, uint32_t idx, color_t *colors) {
+    int cur_x = idx % img->width;
+    int cur_y = idx / img->width;
+    if (colors && (img->fmt == indexed2 || img->fmt == indexed4 || img->fmt == indexed16)) {
+        uint32_t ci = getpixel(img, cur_x, cur_y);
+        return to_disp_color(COLOR_TO_RGB888(colors[ci], cur_x, cur_y));
+    }
+    if (img->fmt == rgb565) {
+        uint32_t pos = ((uint32_t)cur_y * (uint32_t)img->width + (uint32_t)cur_x) * 2U;
+        return (uint16_t)(((uint16_t)img->data[pos] << 8) | (uint16_t)img->data[pos + 1]);
+    }
+    uint32_t rgb = getpixel(img, cur_x, cur_y);
+    return to_disp_color(rgb);
+}
+
+static inline int get_render_chunk_lines(void) {
+    if (backup.config.wifi_mode == WIFI_MODE_DISABLED &&
+            backup.config.ble_mode == BLE_MODE_DISABLED) {
+        return CHUNK_LINES_HIGH;
+    } else if (backup.config.wifi_mode == WIFI_MODE_DISABLED ||
+            backup.config.ble_mode == BLE_MODE_DISABLED) {
+        return CHUNK_LINES_HIGH;
+    }
+
+    return CHUNK_LINES_LOW;
 }
 
 void disp_axs15231_command(uint8_t command, const uint8_t *args, int argn) {
@@ -141,6 +128,26 @@ bool disp_axs15231_render_image(image_buffer_t *img, uint16_t x, uint16_t y, col
 	if (x + img->width > m_display_width || y + img->height > m_display_height) {
 		return false;
 	}
+
+    int chunk_lines = get_render_chunk_lines();
+
+    if (m_rotation == 0 && img->fmt == rgb565) {
+        for (int line = 0; line < img->height; line += chunk_lines) {
+            int lines_now = img->height - line;
+            if (lines_now > chunk_lines) {
+                lines_now = chunk_lines;
+            }
+
+            uint8_t *src = img->data + ((size_t)line * (size_t)img->width * 2U);
+			esp_lcd_panel_draw_bitmap(m_panel,
+					x,
+                    y + line,
+					x + img->width,
+                    y + line + lines_now,
+					src);
+		}
+        return true;
+    }
 
 	uint16_t *buf = (uint16_t *)m_pix_buf;
 
@@ -168,22 +175,22 @@ bool disp_axs15231_render_image(image_buffer_t *img, uint16_t x, uint16_t y, col
         target_h = img->width;
     }
 
-    uint32_t total_p = target_w * target_h;
+    uint32_t total_p = (uint32_t)target_w * (uint32_t)target_h;
     uint32_t pix_idx = 0;
+    uint32_t max_chunk_pixels = (uint32_t)target_w * (uint32_t)chunk_lines;
+
     while (pix_idx < total_p) {
         uint32_t chunk_now = total_p - pix_idx;
-        if (chunk_now > PIX_BUF_PIXELS) chunk_now = PIX_BUF_PIXELS;
 
-        if (pix_idx + chunk_now < total_p) {
-            chunk_now = (chunk_now / target_w) * target_w;
-            if (chunk_now == 0) chunk_now = target_w;
+        if (chunk_now > max_chunk_pixels) {
+            chunk_now = max_chunk_pixels;
         }
 
         for (uint32_t i = 0; i < chunk_now; i++) {
             uint32_t p_idx = pix_idx + i;
             int p_cur_x = p_idx % target_w;
             int p_cur_y = p_idx / target_w;
-            
+
             int abs_px = px_min + p_cur_x;
             int abs_py = py_min + p_cur_y;
             int lx, ly;
@@ -202,15 +209,14 @@ bool disp_axs15231_render_image(image_buffer_t *img, uint16_t x, uint16_t y, col
                 ly = abs_px;
             }
 
-            uint32_t src_idx = (ly - y) * img->width + (lx - x);
-            buf[i] = to_disp_color(fetch_rgb888(img, src_idx, colors));
+            uint32_t src_idx = (uint32_t)(ly - y) * (uint32_t)img->width + (uint32_t)(lx - x);
+            buf[i] = fetch_rgb565(img, src_idx, colors);
         }
 
         int p_start_y = py_min + (pix_idx / target_w);
-        int p_end_y   = p_start_y + (chunk_now / target_w);
-        if (p_end_y == p_start_y && chunk_now > 0) p_end_y++;
-        
+        int p_end_y = p_start_y + (chunk_now / target_w);
         esp_lcd_panel_draw_bitmap(m_panel, px_min, p_start_y, px_min + target_w, p_end_y, buf);
+
         pix_idx += chunk_now;
     }
 
@@ -218,26 +224,27 @@ bool disp_axs15231_render_image(image_buffer_t *img, uint16_t x, uint16_t y, col
 }
 
 void disp_axs15231_clear(uint32_t color) {
+    int chunk_lines = get_render_chunk_lines();
 	uint16_t c = to_disp_color(color);
 	uint16_t *buf = (uint16_t *)m_pix_buf;
 
-	for (int i = 0; i < PIX_BUF_PIXELS; i++) {
+    int line_pixels = DISPLAY_WIDTH_PHYS * chunk_lines;
+    if (line_pixels > PIX_BUF_PIXELS) {
+        line_pixels = PIX_BUF_PIXELS;
+    }
+
+    for (int i = 0; i < line_pixels; i++) {
 		buf[i] = c;
 	}
 
-	int total = DISPLAY_WIDTH_PHYS * DISPLAY_HEIGHT_PHYS;
-	int sent = 0;
-	while (sent < total) {
-		int chunk = total - sent;
-		if (chunk > PIX_BUF_PIXELS) chunk = PIX_BUF_PIXELS;
+    for (int y = 0; y < DISPLAY_HEIGHT_PHYS; y += chunk_lines) {
+        int lines_now = DISPLAY_HEIGHT_PHYS - y;
+        if (lines_now > chunk_lines) {
+            lines_now = chunk_lines;
+        }
 
-		int start_y = sent / DISPLAY_WIDTH_PHYS;
-		int lines = chunk / DISPLAY_WIDTH_PHYS;
-		if (lines == 0) lines = 1;
-
-		esp_lcd_panel_draw_bitmap(m_panel, 0, start_y, DISPLAY_WIDTH_PHYS, start_y + lines, buf);
-		sent += lines * DISPLAY_WIDTH_PHYS;
-	}
+        esp_lcd_panel_draw_bitmap(m_panel, 0, y, DISPLAY_WIDTH_PHYS, y + lines_now, buf);
+    }
 }
 
 static lbm_value ext_disp_cmd(lbm_value *args, lbm_uint argn) {
