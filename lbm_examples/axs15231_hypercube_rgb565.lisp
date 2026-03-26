@@ -21,7 +21,7 @@
 (touch-load-axs15231 touch-sda touch-scl touch-rst touch-int DISP_W DISP_H 400000)
 (touch-apply-transforms 0 0 0)
 
-(def img (img-buffer 'rgb888 DISP_W DISP_H))
+(def img (img-buffer 'rgb565 DISP_W DISP_H))
 
 (def COLOR_BG    0x050810)
 (def COLOR_TEXT  0xe8f4ff)
