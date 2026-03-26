@@ -10,6 +10,8 @@
 
 #include <lispbm.h>
 #include <lbm_image.h>
+#include <extensions/display_extensions.h>
+#include "disp_st7789.h"
 
 
 // ////////////////////////////////////////////////////////////
@@ -25,9 +27,9 @@ static const esp_partition_t *get_lbm_image_storage_partition(void) {
 // ////////////////////////////////////////////////////////////
 // Lispbm configuration and initializaion
 
-#define GC_STACK_SIZE          256
+#define GC_STACK_SIZE          512
 #define PRINT_STACK_SIZE       256
-#define HEAP_SIZE              4096
+#define HEAP_SIZE              8192
 #define EXTENSION_STORAGE_SIZE 256
 
 static lbm_cons_t heap[HEAP_SIZE] __attribute__ ((aligned (8)));
@@ -64,8 +66,58 @@ static bool image_write(uint32_t w, int32_t ix, bool const_heap) {
   if (current == w) return true;           // already correct, no write needed
   if (current != 0xFFFFFFFF) return false; // not erased, can't write
   if (esp_partition_write(lbm_image_partition, offset, &w, 4) != ESP_OK) return false;
+  // Invalidate the mmap cache so reads through image_addr see the new data
   Cache_Invalidate_Addr((uint32_t)((uint8_t*)image_addr + offset), 4);
   return true;
+}
+
+// ////////////////////////////////////////////////////////////
+// Display
+
+// ESP32C3 has GPIOs 0-21
+static bool gpio_is_valid(int pin) {
+  return pin >= 0 && pin <= 21;
+}
+
+static lbm_value ext_disp_load_st7789(lbm_value *args, lbm_uint argn) {
+  if (argn != 6 && argn != 8) {
+    return ENC_SYM_EERROR;
+  }
+
+  int gpio_sd0   = lbm_dec_as_i32(args[0]);
+  int gpio_clk   = lbm_dec_as_i32(args[1]);
+  int gpio_cs    = lbm_dec_as_i32(args[2]);
+  int gpio_reset = lbm_dec_as_i32(args[3]);
+  int gpio_dc    = lbm_dec_as_i32(args[4]);
+  int width = 320;
+  int height = 240;
+
+  if (!gpio_is_valid(gpio_sd0) ||
+      !gpio_is_valid(gpio_clk) ||
+      !gpio_is_valid(gpio_cs)  ||
+      (!gpio_is_valid(gpio_reset) && gpio_reset >= 0) ||
+      !gpio_is_valid(gpio_dc)) {
+    lbm_set_error_reason("Invalid GPIO");
+    return ENC_SYM_EERROR;
+  }
+
+  uint32_t spi_mhz = lbm_dec_as_u32(args[5]);
+  if (spi_mhz == 0 || spi_mhz > 40) {
+    lbm_set_error_reason("Invalid clock speed");
+    return ENC_SYM_EERROR;
+  }
+  if (argn > 6 ) { // TODO: check if numbers
+    width = lbm_dec_as_i32(args[6]);
+    height = lbm_dec_as_i32(args[7]);
+  }
+  disp_st7789_init(gpio_sd0, gpio_clk, gpio_cs, gpio_reset, gpio_dc, (int)spi_mhz, width, height);
+
+  lbm_display_extensions_set_callbacks(
+    disp_st7789_render_image,
+    disp_st7789_clear,
+    disp_st7789_reset);
+
+  return ENC_SYM_TRUE;
 }
 
 static void eval_thread(void *arg) {
@@ -107,11 +159,19 @@ static bool startup_lbm(void) {
     fflush(stdout);
     esp_restart();
   }
-  printf("Image booted\n");
-  
-  lbm_add_eval_symbols();
+  printf("Image booted\n"); fflush(stdout);
 
-  xTaskCreatePinnedToCore(eval_thread, "lbm_eval", 3072, NULL, 6, NULL, tskNO_AFFINITY);
+  lbm_add_eval_symbols();
+  printf("eval symbols done\n"); fflush(stdout);
+
+  lbm_display_extensions_init();
+  printf("display extensions init done\n"); fflush(stdout);
+
+  lbm_add_extension("disp-load-st7789", ext_disp_load_st7789);
+  printf("disp-load-st7789 registered\n"); fflush(stdout);
+
+  xTaskCreatePinnedToCore(eval_thread, "lbm_eval", 8192, NULL, 6, NULL, tskNO_AFFINITY);
+  printf("eval thread created\n"); fflush(stdout);
   return true;
 }
 
