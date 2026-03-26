@@ -44,6 +44,7 @@
 #include "extensions/random_extensions.h"
 #include "extensions/dsp_extensions.h"
 #include "extensions/crypto_extensions.h"
+#include "extensions/ecc_extensions.h"
 
 #include "eval_cps.h"
 #include "lbm_image.h"
@@ -115,7 +116,7 @@ static lbm_value ext_rand(lbm_value *args, lbm_uint argn) {
 
 static lbm_value ext_rand_max(lbm_value *args, lbm_uint argn) {
   (void)args; (void)argn;
-  return lbm_enc_i32(RAND_MAX);
+  return lbm_enc_u32(268435183);
 }
 
 
@@ -1343,6 +1344,7 @@ int init_exts(void) {
   lbm_random_extensions_init();
   lbm_dsp_extensions_init();
   lbm_crypto_extensions_init();
+  lbm_ecc_extensions_init();
 
 #ifndef LBM_WIN
   init_proc_management();

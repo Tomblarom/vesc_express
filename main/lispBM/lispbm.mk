@@ -18,7 +18,7 @@ LISPBM_SRC = $(LISPBM)/src/env.c \
              $(LISPBM)/src/lbm_prof.c\
              $(LISPBM)/src/lbm_defrag_mem.c\
              $(LISPBM)/src/lbm_image.c\
-             $(LISPBM)/src/buffer.c \
+             $(LISPBM)/utils/buffer.c \
              $(LISPBM)/src/extensions/array_extensions.c \
              $(LISPBM)/src/extensions/string_extensions.c \
              $(LISPBM)/src/extensions/math_extensions.c \
@@ -33,7 +33,8 @@ LISPBM_SRC = $(LISPBM)/src/env.c \
              $(LISPBM)/src/extensions/ttf_backend.c \
              $(LISPBM)/src/extensions/schrift.c \
 	     $(LISPBM)/src/extensions/dsp_extensions.c \
-             $(LISPBM)/src/extensions/crypto_extensions.c
+             $(LISPBM)/src/extensions/crypto_extensions.c \
+             $(LISPBM)/src/extensions/ecc_extensions.c
 
 LISPBM_H = $(LISPBM)/include/env.h \
            $(LISPBM)/include/eval_cps.h \
@@ -60,7 +61,7 @@ LISPBM_H = $(LISPBM)/include/env.h \
            $(LISPBM)/include/stack.h \
            $(LISPBM)/include/symrepr.h \
            $(LISPBM)/include/tokpar.h \
-           $(LISPBM)/include/buffer.h \
+           $(LISPBM)/utils/buffer.h \
            $(LISPBM)/include/extensions/array_extensions.h \
            $(LISPBM)/include/extensions/display_extensions.h \
            $(LISPBM)/include/extensions/lbm_dyn_lib.h \
@@ -69,12 +70,16 @@ LISPBM_H = $(LISPBM)/include/env.h \
            $(LISPBM)/include/extensions/runtime_extensions.h \
            $(LISPBM)/include/extensions/set_extensions.h \
            $(LISPBM)/include/extensions/string_extensions.h \
-           $(LISPBM)/include/extensions/ttf_extensions.h
+           $(LISPBM)/include/extensions/ttf_extensions.h \
+           $(LISPBM)/include/extensions/crypto_extensions.h \
+           $(LISPBM)/include/extensions/ecc_extensions.h
+
 
 
 LISPBM_INC = -I$(LISPBM)/include \
              -I$(LISPBM)/include/extensions \
-             -I$(LISPBM)/src
+             -I$(LISPBM)/src \
+             -I$(LISPBM)/utils
 
 LISPBM_FLAGS = -lm
 LISPBM_DEPS  =
