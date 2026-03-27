@@ -160,7 +160,7 @@ def build_target(config, output_dir, prev_target=None, idx=0, total=0):
     # - Existing build, target changed: use set-target (which handles fullclean properly)
     # - Existing build, same target: skip, go straight to build
     if is_fresh:
-        cmd_base = ["idf.py", "-B", build_dir, f"-DIDF_TARGET={config['target']}", f"-DHW_NAME={config['name']}"]
+        cmd_base = ["idf.py", "-B", build_dir, f"-DIDF_TARGET={config['target'][0:7]}", f"-DHW_NAME={config['name']}"]
     else:
         cmd_base = ["idf.py", "-B", build_dir, f"-DHW_NAME={config['name']}"]
         if prev_target != config['target']:
