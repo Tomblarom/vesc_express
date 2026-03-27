@@ -166,7 +166,7 @@ def build_target(config, output_dir, prev_target=None, idx=0, total=0):
         if prev_target != config['target']:
             set_status(f"{idx}/{total} | {config['name']} ({config['target']}) | Setting target")
             print_status(f"--> Chip target changed ({prev_target} -> {config['target']}), setting target...")
-            res = run_streamed(cmd_base + ["set-target", config['target']], shell=shell)
+            res = run_streamed(cmd_base + ["set-target", config['target'][0:7]], shell=shell)
             if res.returncode != 0:
                 return False
 
