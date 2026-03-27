@@ -181,7 +181,7 @@ def build_target(config, output_dir, prev_target=None, idx=0, total=0):
         # 3. Copy artifacts
         set_status(f"{idx}/{total} | {config['name']} ({config['target']}) | Copying artifacts")
         try:
-            target_output_dir = os.path.join(output_dir, config['target'], config['name'])
+            target_output_dir = os.path.join(output_dir, config['target'][0:7], config['name'])
             os.makedirs(target_output_dir, exist_ok=True)
 
             # Source paths
