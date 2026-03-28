@@ -47,6 +47,9 @@
 #define TOUCH_I2C_PORT I2C_NUM_0
 #define TOUCH_I2C_DEFAULT_FREQ 400000
 #define TOUCH_EVENT_TASK_STACK 2048
+#define TOUCH_EVENT_POLL_MS 50 
+#define TOUCH_EVENT_MIN_INTERVAL_MS 20
+#define TOUCH_EVENT_MOVE_DELTA 2
 
 static char *msg_invalid_gpio = "Invalid GPIO";
 static char *msg_invalid_size = "Invalid touch size";
@@ -87,6 +90,7 @@ static esp_err_t touch_init_gt911_esp_lcd(int sda, int scl, int rst, int int_pin
 static esp_err_t touch_init_cst9217_esp_lcd(int sda, int scl, int rst, int int_pin, uint16_t width, uint16_t height, uint32_t freq, lispif_touch_driver_t *driver);
 static esp_err_t touch_init_xpt2046_esp_lcd(int host, int mosi, int miso, int sclk, int cs, int int_pin, uint16_t width, uint16_t height, uint32_t freq, lispif_touch_driver_t *driver);
 static bool touch_lock_loaded_or_error(void);
+static bool touch_point_changed_enough(const lispif_touch_point_data_t *prev, const lispif_touch_point_data_t *curr);
 
 static bool start_flatten_with_gc(lbm_flat_value_t *v, size_t buffer_size) {
 	if (lbm_start_flatten(v, buffer_size)) {
@@ -427,6 +431,27 @@ static bool touch_lock_loaded_or_error(void) {
 	return true;
 }
 
+static bool touch_point_changed_enough(const lispif_touch_point_data_t *prev, const lispif_touch_point_data_t *curr) {
+	if (!prev || !curr) {
+		return false;
+	}
+
+	int dx = (int)curr->x - (int)prev->x;
+	if (dx < 0) {
+		dx = -dx;
+	}
+
+	int dy = (int)curr->y - (int)prev->y;
+	if (dy < 0) {
+		dy = -dy;
+	}
+
+	return dx >= TOUCH_EVENT_MOVE_DELTA ||
+			dy >= TOUCH_EVENT_MOVE_DELTA ||
+			curr->track_id != prev->track_id ||
+			curr->strength != prev->strength;
+}
+
 static void touch_delete_locked(void) {
 	if (touch_driver.deinit) {
 		touch_driver.deinit();
@@ -514,12 +539,21 @@ void lispif_touch_shutdown(void) {
 
 static void touch_event_task(void *arg) {
 	(void)arg;
+	const TickType_t min_emit_ticks = pdMS_TO_TICKS(TOUCH_EVENT_MIN_INTERVAL_MS);
+	const TickType_t poll_delay_ticks = pdMS_TO_TICKS(TOUCH_EVENT_POLL_MS);
+	bool last_pressed = false;
+	bool has_last_point = false;
+	lispif_touch_point_data_t last_point = {0};
+	TickType_t last_emit_tick = 0;
 
 	for (;;) {
 		if (touch_has_int) {
 			ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+			while (ulTaskNotifyTake(pdTRUE, 0) > 0) {
+				// Drain pending notifications to coalesce interrupt bursts.
+			}
 		} else {
-			vTaskDelay(pdMS_TO_TICKS(50));
+			vTaskDelay(poll_delay_ticks);
 		}
 
 		if (!event_touch_int_en || !touch_mutex) {
@@ -542,7 +576,23 @@ static void touch_event_task(void *arg) {
 		xSemaphoreGive(touch_mutex);
 
 		if (event_touch_int_en) {
-			touch_emit_event(pressed, &point);
+			TickType_t now = xTaskGetTickCount();
+			bool state_changed = pressed != last_pressed;
+			bool moved = pressed && has_last_point && touch_point_changed_enough(&last_point, &point);
+			bool have_interval = (now - last_emit_tick) >= min_emit_ticks;
+			bool should_emit = state_changed || (moved && have_interval);
+
+			if (should_emit) {
+				touch_emit_event(pressed, &point);
+				last_emit_tick = now;
+				last_pressed = pressed;
+				if (pressed) {
+					last_point = point;
+					has_last_point = true;
+				} else {
+					has_last_point = false;
+				}
+			}
 		}
 	}
 }
