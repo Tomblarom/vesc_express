@@ -5,7 +5,7 @@
 (ext-disp-orientation 1)
 
 (touch-load-cst816s 47 48 17 21 170 320 400000)
-(touch-apply-transforms 1 0 1)
+(touch-apply-transforms 1 1 0)
 
 (def img (img-buffer 'indexed4 320 170))
 
