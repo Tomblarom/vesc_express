@@ -73,6 +73,7 @@ if(DEFINED HW_NAME AND DEFINED HW_TARGET AND DEFINED HW_FILE_NAME)
     add_compile_definitions(HW_HEADER="${HW_FILE}.h" HW_SOURCE="${HW_FILE}.c")
 
     if(HW_TARGET STREQUAL "esp32s3_n16r8")
+        add_compile_definitions(VESC_ENABLE_INTERNAL_STORAGE_FS)
         message(STATUS "Using n16r8 defaults instead of sdkconfig.defaults")
         set(SDKCONFIG_DEFAULTS_LIST "sdkconfig.defaults.${HW_IDF_TARGET};sdkconfig.defaults.esp32s3_n16r8")
     else()
