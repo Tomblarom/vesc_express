@@ -3730,11 +3730,51 @@ static lbm_value ext_f_connect_nand(lbm_value *args, lbm_uint argn) {
 	return res ? ENC_SYM_TRUE : ENC_SYM_NIL;
 }
 
+#ifdef VESC_ENABLE_INTERNAL_STORAGE_FS
+// (f-connect-storage) -> t or nil
+static lbm_value ext_f_connect_storage(lbm_value *args, lbm_uint argn) {
+	(void)args;
+	LBM_CHECK_ARGN(0);
+
+	esp_err_t res = log_mount_storage();
+
+	if (res == ESP_OK) {
+		return ENC_SYM_TRUE;
+	} else {
+		lbm_set_esp_error_reason(res);
+		return ENC_SYM_EERROR;
+	}
+}
+
+// (f-storage-info) -> (bytes-free bytes-total)
+static lbm_value ext_f_storage_info(lbm_value *args, lbm_uint argn) {
+	(void)args;
+	LBM_CHECK_ARGN(0);
+
+	size_t total = 0;
+	size_t used = 0;
+	esp_err_t res = log_storage_info(&total, &used);
+	if (res != ESP_OK) {
+		lbm_set_esp_error_reason(res);
+		return ENC_SYM_EERROR;
+	}
+
+	lbm_value out = ENC_SYM_NIL;
+	out = lbm_cons(lbm_enc_i((int32_t)total), out);
+	out = lbm_cons(lbm_enc_i((int32_t)(total - used)), out);
+
+	return out;
+}
+#endif
+
 // (f-disconnect) -> t
 static lbm_value ext_f_disconnect(lbm_value *args, lbm_uint argn) {
 	(void)args; (void)argn;
 	log_unmount_card();
 	log_unmount_nand_flash();
+#ifdef VESC_ENABLE_INTERNAL_STORAGE_FS
+	log_unmount_storage();
+#endif
 	return ENC_SYM_TRUE;
 }
 
@@ -6692,6 +6732,10 @@ void lispif_load_vesc_extensions(bool main_found) {
 		// File System
 		lbm_add_extension("f-connect", ext_f_connect);
 		lbm_add_extension("f-connect-nand", ext_f_connect_nand);
+#ifdef VESC_ENABLE_INTERNAL_STORAGE_FS
+		lbm_add_extension("f-connect-storage", ext_f_connect_storage);
+		lbm_add_extension("f-storage-info", ext_f_storage_info);
+#endif
 		lbm_add_extension("f-disconnect", ext_f_disconnect);
 		lbm_add_extension("f-open", ext_f_open);
 		lbm_add_extension("f-close", ext_f_close);
