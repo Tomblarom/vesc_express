@@ -80,7 +80,7 @@
 
 // Name
 #ifndef CONF_BLE_NAME
-#define CONF_BLE_NAME "Express"
+#define CONF_BLE_NAME "ECHO"
 #endif
 
 // Bluetooth Pin Code

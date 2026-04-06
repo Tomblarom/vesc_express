@@ -286,7 +286,7 @@ p, li { white-space: pre-wrap; }
 &lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;NOTE:&lt;/span&gt;&lt;/p&gt;
 &lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Bluetooth and wifi settings will be applied after a reboot.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</description>
             <cDefine>CONF_BLE_NAME</cDefine>
-            <valString>Express</valString>
+            <valString>ECHO</valString>
             <maxLen>8</maxLen>
         </ble_name>
         <ble_pin>
