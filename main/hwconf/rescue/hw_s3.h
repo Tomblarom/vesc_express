@@ -24,8 +24,8 @@
 
 #define HW_NAME						"rESCue S3"
 #define HW_TARGET                   "esp32s3"
-
 #define HW_INIT_HOOK()				hw_init()
+#define HW_FLASH_4MB
 
 // CAN
 #define CAN_TX_GPIO_NUM				16

@@ -2,7 +2,10 @@
 #define HWCONF_ECHO_H_
 
 #define HW_NAME                 "ECHO"
-#define HW_TARGET               "esp32s3_n16r8"
+#define HW_TARGET               "esp32s3"
+#define HW_HAS_PSRAM
+#define HW_FLASH_16MB
+#define HW_INTERNAL_FS
 
 #define OVR_CONF_PARSER_C		"echo_confparser.c"
 #define OVR_CONF_PARSER_H		"echo_confparser.h"

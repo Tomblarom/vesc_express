@@ -100,7 +100,7 @@
 
 #if CONFIG_IDF_TARGET_ESP32S3
 	#define LBM_EVENTS_TASK_STACK_SIZE 1280
-#elif CONFIG_IDF_TARGET_ESP32C3
+#elif CONFIG_IDF_TARGET_ESP32C3 || CONFIG_IDF_TARGET_ESP32C6
 	#define LBM_EVENTS_TASK_STACK_SIZE 640
 #else
 	#error "Unsupported target"
@@ -2834,11 +2834,15 @@ static lbm_value ext_gpio_hold_deepsleep(lbm_value *args, lbm_uint argn) {
 
 	int state = lbm_dec_as_i32(args[0]);
 
+	#if SOC_GPIO_SUPPORT_HOLD_SINGLE_IO_IN_DSLP
+	(void)state;
+	#else
 	if (state) {
 		gpio_deep_sleep_hold_en();
 	} else {
 		gpio_deep_sleep_hold_dis();
 	}
+	#endif
 
 	return ENC_SYM_TRUE;
 }
@@ -3506,7 +3510,7 @@ static lbm_value ext_sleep_config_wakeup_pin(lbm_value *args, lbm_uint argn) {
 #if CONFIG_IDF_TARGET_ESP32S3
 	esp_sleep_enable_ext0_wakeup(pin, mode ? 1 : 0); 
 	esp_sleep_pd_config(ESP_PD_DOMAIN_RTC_PERIPH, ESP_PD_OPTION_ON);
-#elif CONFIG_IDF_TARGET_ESP32C3
+#elif CONFIG_IDF_TARGET_ESP32C3 || CONFIG_IDF_TARGET_ESP32C6
 	esp_deep_sleep_enable_gpio_wakeup(1 << pin,mode ? ESP_GPIO_WAKEUP_GPIO_HIGH : ESP_GPIO_WAKEUP_GPIO_LOW);
 #else
 	#error "Unsupported target"
@@ -3730,7 +3734,7 @@ static lbm_value ext_f_connect_nand(lbm_value *args, lbm_uint argn) {
 	return res ? ENC_SYM_TRUE : ENC_SYM_NIL;
 }
 
-#ifdef VESC_ENABLE_INTERNAL_STORAGE_FS
+#ifdef HW_INTERNAL_FS
 // (f-connect-storage) -> t or nil
 static lbm_value ext_f_connect_storage(lbm_value *args, lbm_uint argn) {
 	(void)args;
@@ -3772,7 +3776,7 @@ static lbm_value ext_f_disconnect(lbm_value *args, lbm_uint argn) {
 	(void)args; (void)argn;
 	log_unmount_card();
 	log_unmount_nand_flash();
-#ifdef VESC_ENABLE_INTERNAL_STORAGE_FS
+#ifdef HW_INTERNAL_FS
 	log_unmount_storage();
 #endif
 	return ENC_SYM_TRUE;
@@ -6732,7 +6736,7 @@ void lispif_load_vesc_extensions(bool main_found) {
 		// File System
 		lbm_add_extension("f-connect", ext_f_connect);
 		lbm_add_extension("f-connect-nand", ext_f_connect_nand);
-#ifdef VESC_ENABLE_INTERNAL_STORAGE_FS
+#ifdef HW_INTERNAL_FS
 		lbm_add_extension("f-connect-storage", ext_f_connect_storage);
 		lbm_add_extension("f-storage-info", ext_f_storage_info);
 #endif

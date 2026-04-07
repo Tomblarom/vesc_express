@@ -38,6 +38,14 @@
 #include "soc/gpio_sig_map.h"
 #include <string.h>
 
+#ifndef TWAI_TX_IDX
+#define TWAI_TX_IDX TWAI0_TX_IDX
+#endif
+
+#ifndef TWAI_RX_IDX
+#define TWAI_RX_IDX TWAI0_RX_IDX
+#endif
+
 // Status messages
 static can_status_msg stat_msgs[CAN_STATUS_MSGS_TO_STORE];
 static can_status_msg_2 stat_msgs_2[CAN_STATUS_MSGS_TO_STORE];

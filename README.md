@@ -1,6 +1,6 @@
 # VESC Express
 
-The is the codebase for the VESC Express, which is a WiFi and Bluetooth-enabled logger and IO-board. At the moment it is tested and runs on the ESP32C3 and ESP32S3 but other ESP32 devices can be added.
+The is the codebase for the VESC Express, which is a WiFi and Bluetooth-enabled logger and IO-board. At the moment it is tested and runs on the ESP32C3, ESP32C6 and ESP32S3 but other ESP32 devices can be added.
 
 ## Toolchain
 
@@ -17,7 +17,7 @@ The instructions linked above will install the master branch of ESP-IDF. To inst
 ```bash
 git clone -b v5.2.2 --recursive https://github.com/espressif/esp-idf.git esp-idf-v5.2.2
 cd esp-idf-v5.2.2/
-./install.sh esp32c3 esp32s3
+./install.sh esp32c3 esp32c6 esp32s3
 ```
 
 At the moment development is done using the stable 5.2.2-release.
@@ -29,7 +29,11 @@ Set the target chip/architecture with
 idf.py set-target <target> 
 ```
 
-where target is esp32c3 or esp32s3. You will need to run a fullclean or remove the build directory when changing targets.
+where target is esp32c3, esp32c6 or esp32s3. You will need to run a fullclean or remove the build directory when changing targets.
+
+Each build target now uses its own base `sdkconfig.defaults.<target>` file plus optional overlays selected from HW flags such as `HW_FLASH_16MB`, `HW_FLASH_4MB`, `HW_HAS_PSRAM` and `HW_INTERNAL_FS`.
+
+For example, a board can keep `HW_TARGET` as `esp32s3` and enable `HW_FLASH_16MB`, `HW_HAS_PSRAM` and `HW_INTERNAL_FS` in the hardware header to pull in those overlays.
 
 Once the toolchain is set up in the current path, the project can be built with
 
