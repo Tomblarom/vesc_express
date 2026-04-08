@@ -26,7 +26,6 @@
 
 #define HW_NAME						"VBMS16"
 #define HW_TARGET                   "esp32c3"
-#define HW_FLASH_4MB
 
 #define HW_EARLY_LBM_INIT
 #define HW_NO_UART

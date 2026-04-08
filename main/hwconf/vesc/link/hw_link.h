@@ -25,7 +25,6 @@
 
 #define HW_NAME						"VL Link"
 #define HW_TARGET                   "esp32c3"
-#define HW_FLASH_4MB
 
 #ifndef CONF_BLE_NAME
 #define CONF_BLE_NAME "VL Link"

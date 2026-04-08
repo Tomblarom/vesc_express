@@ -25,7 +25,6 @@
 
 #define HW_NAME						"VL Scope"
 #define HW_TARGET					"esp32c3"
-#define HW_FLASH_4MB
 
 #define HW_NO_UART
 

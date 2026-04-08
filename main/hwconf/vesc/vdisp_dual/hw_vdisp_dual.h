@@ -25,7 +25,6 @@
 
 #define HW_NAME						"VDisp Dual"
 #define HW_TARGET					"esp32c3"
-#define HW_FLASH_4MB
 
 #define HW_NO_UART
 #define HW_EARLY_LBM_INIT

@@ -26,7 +26,6 @@
 #define HW_TARGET					"esp32c3"
 #define HW_DEFAULT_ID				38
 #define HW_NO_UART
-#define HW_FLASH_4MB
 
 #define HW_INIT_HOOK()				hw_init()
 

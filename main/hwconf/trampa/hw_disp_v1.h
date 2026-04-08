@@ -35,7 +35,6 @@
 #define HW_NO_UART
 
 #define HW_INIT_HOOK()				hw_init()
-#define HW_FLASH_4MB
 
 // CAN
 #define CAN_TX_GPIO_NUM				1

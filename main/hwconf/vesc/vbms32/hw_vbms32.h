@@ -43,7 +43,6 @@
 
 #define HW_NAME						"VBMS32"
 #define HW_TARGET					"esp32c3"
-#define HW_FLASH_4MB
 
 #define PCB_VERSION					2
 

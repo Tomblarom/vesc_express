@@ -23,7 +23,6 @@
 #define HW_NAME						"Avaspark RGB V3"
 #define HW_TARGET                   "esp32s3"
 #define HW_NO_UART
-#define HW_FLASH_4MB
 
 #define HW_INIT_HOOK()				hw_init()
 

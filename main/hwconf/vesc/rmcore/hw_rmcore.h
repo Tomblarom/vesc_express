@@ -22,7 +22,6 @@
 
 #define HW_NAME						"Rmcore"
 #define HW_TARGET                   "esp32c3"
-#define HW_FLASH_4MB
 
 #ifndef CONF_BLE_NAME
 #define CONF_BLE_NAME 				"Rmcore"
