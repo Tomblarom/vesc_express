@@ -101,10 +101,6 @@ if(DEFINED HW_NAME AND DEFINED HW_TARGET AND DEFINED HW_FILE_NAME)
         message(FATAL_ERROR "HW ${HW_NAME} cannot define more than one of HW_FLASH_16MB, HW_FLASH_8MB or HW_FLASH_4MB")
     endif()
 
-    if(HW_INTERNAL_FS)
-        add_compile_definitions(HW_INTERNAL_FS)
-    endif()
-
     set(SDKCONFIG_DEFAULTS_LIST "sdkconfig.defaults.${HW_IDF_TARGET}")
 
     if(HW_FLASH_16MB)

@@ -1,25 +1,8 @@
 #include "hw_echo.h"
 
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "driver/i2c_master.h"
-#include "esp_rom_gpio.h"
-#include "soc/gpio_sig_map.h"
-#include "driver/gpio.h"
-#include "esp_log.h"
-#include "lispif_disp_extensions.h"
-#include "disp_axs15231.h"
-#include "esp_wifi.h"
-#include "esp_bt.h"
-#include "esp_bt_main.h"
-#include "esp_sleep.h"
-
 #include "lispif.h"
-#include "lispbm.h"
+#include "disp_axs15231.h"
 #include "extensions/display_extensions.h"
-#include "terminal.h"
-#include "commands.h"
-#include "utils.h"
 
 static lbm_value ext_disp_init(lbm_value *args, lbm_uint argn) {
     (void)args; (void)argn;
