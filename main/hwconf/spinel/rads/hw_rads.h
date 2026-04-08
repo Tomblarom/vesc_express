@@ -19,7 +19,10 @@
 #define HWCONF_RADS_H_
 
 #define HW_NAME				"RADS"
-#define HW_TARGET           "esp32s3_n16r8"
+#define HW_TARGET           "esp32s3"
+#define HW_HAS_PSRAM
+#define HW_FLASH_16MB
+#define HW_INTERNAL_FS
 
 #define OVR_CONF_PARSER_C		"rads_confparser.c"
 #define OVR_CONF_PARSER_H		"rads_confparser.h"

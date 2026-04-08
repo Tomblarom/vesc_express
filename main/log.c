@@ -22,7 +22,7 @@
 #include "nmea.h"
 
 #include "esp_vfs_fat.h"
-#ifdef VESC_ENABLE_INTERNAL_STORAGE_FS
+#ifdef HW_INTERNAL_FS
 #include "esp_spiffs.h"
 #endif
 #include "sdmmc_cmd.h"
@@ -57,7 +57,7 @@ char *file_basepath = "/sdcard/";
 static sdmmc_host_t m_host = SDSPI_HOST_DEFAULT();
 static sdmmc_card_t *m_card = 0;
 static spi_nand_flash_device_t *nand_flash_device_handle = 0;
-#ifdef VESC_ENABLE_INTERNAL_STORAGE_FS
+#ifdef HW_INTERNAL_FS
 static bool m_storage_mounted = false;
 #endif
 
@@ -399,7 +399,7 @@ void log_unmount_nand_flash (void) {
 	}
 }
 
-#ifdef VESC_ENABLE_INTERNAL_STORAGE_FS
+#ifdef HW_INTERNAL_FS
 void log_unmount_storage(void) {
 	if (m_storage_mounted) {
 		esp_vfs_spiffs_unregister("storage");
