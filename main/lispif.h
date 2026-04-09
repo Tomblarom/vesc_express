@@ -48,4 +48,8 @@ void lispif_load_vesc_extensions(bool main_found);
 char* lispif_print_prefix(void);
 char* lispif_fw_name(void);
 
+esp_err_t lispif_i2c_tx_rx(uint8_t addr,
+		const uint8_t* write_buffer, size_t write_size,
+		uint8_t* read_buffer, size_t read_size);
+
 #endif /* LISPBM_LISPIF_H_ */

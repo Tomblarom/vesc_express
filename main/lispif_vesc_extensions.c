@@ -2636,9 +2636,13 @@ static lbm_value ext_i2c_start(lbm_value *args, lbm_uint argn) {
 	return ENC_SYM_TRUE;
 }
 
-static esp_err_t i2c_tx_rx(uint8_t addr,
+esp_err_t lispif_i2c_tx_rx(uint8_t addr,
 		const uint8_t* write_buffer, size_t write_size,
 		uint8_t* read_buffer, size_t read_size) {
+
+	if (!i2c_mutex_init_done || !i2c_started) {
+		return ESP_ERR_INVALID_STATE;
+	}
 
 	xSemaphoreTake(i2c_mutex, portMAX_DELAY);
 	esp_err_t res;
@@ -2717,7 +2721,7 @@ static lbm_value ext_i2c_tx_rx(lbm_value *args, lbm_uint argn) {
 		rxlen = array->size;
 	}
 
-	esp_err_t res = i2c_tx_rx(addr, txbuf, txlen, rxbuf, rxlen);
+	esp_err_t res = lispif_i2c_tx_rx(addr, txbuf, txlen, rxbuf, rxlen);
 
 	if (!is_arr && txbuf) {
 		lbm_free(txbuf);
