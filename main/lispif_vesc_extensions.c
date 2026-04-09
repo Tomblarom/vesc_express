@@ -67,6 +67,7 @@
 #include "comm_ble.h"
 #include "lbm_image.h"
 #include "packet.h"
+#include "bme280_if.h"
 
 #include "esp_netif.h"
 #include "esp_wifi.h"
@@ -6507,6 +6508,34 @@ static lbm_value ext_cmds_proc(lbm_value *args, lbm_uint argn) {
 	return ENC_SYM_TRUE;
 }
 
+static lbm_value ext_bme280_start(lbm_value *args, lbm_uint argn) {
+	lbm_value res = ext_i2c_start(args, argn);
+
+	if (res != ENC_SYM_TRUE) {
+		return res;
+	}
+
+	bme280_if_init_with_mutex(i2c_mutex);
+	return ENC_SYM_TRUE;
+}
+
+static lbm_value ext_bme280_stop(lbm_value *args, lbm_uint argn) {
+	bme280_if_stop();
+	return ENC_SYM_TRUE;
+}
+
+static lbm_value ext_bme280_hum(lbm_value *args, lbm_uint argn) {
+	return lbm_enc_float(bme280_if_get_hum());
+}
+
+static lbm_value ext_bme280_temp(lbm_value *args, lbm_uint argn) {
+	return lbm_enc_float(bme280_if_get_temp());
+}
+
+static lbm_value ext_bme280_pres(lbm_value *args, lbm_uint argn) {
+	return lbm_enc_float(bme280_if_get_pres());
+}
+
 static const char* dyn_functions[] = {
 		"(defun uart-read-bytes (buffer n ofs)"
 		"(let ((rd (uart-read buffer n ofs)))"
@@ -6834,6 +6863,13 @@ void lispif_load_vesc_extensions(bool main_found) {
 		// Commands
 		lbm_add_extension("cmds-start-stop", ext_cmds_start_stop);
 		lbm_add_extension("cmds-proc", ext_cmds_proc);
+
+		// BME280
+		lbm_add_extension("bme280-start", ext_bme280_start);
+		lbm_add_extension("bme280-stop", ext_bme280_stop);
+		lbm_add_extension("bme280-hum", ext_bme280_hum);
+		lbm_add_extension("bme280-temp", ext_bme280_temp);
+		lbm_add_extension("bme280-pres", ext_bme280_pres);
 
 		// Extension libraries
 		lbm_math_extensions_init();
