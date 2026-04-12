@@ -20,7 +20,7 @@
 
 #define HW_NAME				"RADS"
 #define HW_TARGET           "esp32s3"
-//#define HW_HAS_PSRAM
+#define HW_HAS_PSRAM
 #define HW_FLASH_16MB
 #define HW_INTERNAL_FS
 
