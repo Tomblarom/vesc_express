@@ -119,6 +119,7 @@ set(COMPONENT_ADD_INCLUDEDIRS
 "hwconf/avaspark"
 "hwconf/spinel/rads"
 "hwconf/spinel/echo"
+"hwconf/spinel/rabr"
 
 "lispBM"
 "lispBM/include"
