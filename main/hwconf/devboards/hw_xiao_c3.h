@@ -20,8 +20,6 @@
 /* XIAO ESP32C3
    - https://wiki.seeedstudio.com/XIAO_ESP32C3_Getting_Started/
    - https://forum.esk8.news/t/usb-c-to-vesc-can-forward-adapter-cheap-and-diy/79789
-
-   HW_HEADER=hwconf/devboards/hw_xiao_c3.h && HW_SRC=hwconf/devboards/hw_xiao_c3.c && idf.py build
    */
 
 #ifndef MAIN_HWCONF_XIAO_C3_H_
@@ -30,6 +28,8 @@
 #include "driver/gpio.h"
 
 #define HW_NAME						"XIAO C3"
+#define HW_TARGET					"esp32c3"
+#define HW_FLASH_4MB
 #define HW_DEFAULT_ID				2
 
 #define HW_INIT_HOOK()				hw_init()

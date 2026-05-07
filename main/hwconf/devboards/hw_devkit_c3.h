@@ -19,8 +19,6 @@
 
 /*  ESP32-C3-DevKit (multiple)
     - https://www.espressif.com/en/products/devkits#:~:text=ESP32%2DC3
-
-    HW_HEADER=hwconf/devboards/hw_devkit_c3.h && HW_SRC=hwconf/devboards/hw_devkit_c3.c && idf.py build
     */
 
 #ifndef MAIN_HWCONF_DEVKIT_C3_H_
@@ -28,6 +26,7 @@
 
 #define HW_NAME						"Devkit C3"
 #define HW_TARGET					"esp32c3"
+#define HW_FLASH_4MB
 #define HW_UART_COMM
 
 #define HW_INIT_HOOK()				hw_init()
