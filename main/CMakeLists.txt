@@ -121,9 +121,6 @@ set(COMPONENT_ADD_INCLUDEDIRS
 "hwconf/vesc/wcore"
 "hwconf/rescue"
 "hwconf/avaspark"
-"hwconf/spinel/rads"
-"hwconf/spinel/echo"
-"hwconf/spinel/rabr"
 
 "lispBM"
 "lispBM/include"
