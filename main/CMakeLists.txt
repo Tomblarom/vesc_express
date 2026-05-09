@@ -72,12 +72,14 @@ set(COMPONENT_SRCS
 "rgbled/lispif_rgbled_extensions.c"
 
 "touch/lispif_touch_extensions.c"
+"touch/touch_cst836u.c"
 
 "display/lispif_disp_extensions.c"
 "display/disp_sh8501b.c"
 "display/disp_ili9341.c"
 "display/disp_ssd1306.c"
 "display/disp_st7789.c"
+"display/disp_st7789a.c"
 "display/disp_ili9488.c"
 "display/disp_st7735.c"
 "display/disp_ssd1351.c"
@@ -85,6 +87,7 @@ set(COMPONENT_SRCS
 "display/disp_sh8601.c"
 "display/disp_axs15231.c"
 "display/disp_gc9a01.c"
+"display/disp_jd9853.c"
 
 "drivers/bme280/bme280.c"
 "drivers/bme280/bme280_if.c"
