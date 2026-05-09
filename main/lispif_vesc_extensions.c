@@ -1636,6 +1636,11 @@ static lbm_value ext_can_send_eid(lbm_value *args, lbm_uint argn) {
 static volatile lbm_cid can_recv_sid_cid = -1;
 static volatile lbm_cid can_recv_eid_cid = -1;
 
+#ifdef CONFIG_IDF_TARGET_ESP32C6
+static volatile lbm_cid can2_recv_sid_cid = -1;
+static volatile lbm_cid can2_recv_eid_cid = -1;
+#endif
+
 static lbm_value ext_can_recv_sid(lbm_value *args, lbm_uint argn) {
 	if (argn > 1 || (argn == 1 && !lbm_is_number(args[0]))) {
 		lbm_set_error_reason((char*)lbm_error_str_incorrect_arg);
@@ -1677,6 +1682,166 @@ static lbm_value ext_can_recv_eid(lbm_value *args, lbm_uint argn) {
 
 	return ENC_SYM_TRUE;
 }
+
+#ifdef CONFIG_IDF_TARGET_ESP32C6
+
+static lbm_value ext_can2_start(lbm_value *args, lbm_uint argn) {
+	if (argn < 2 || argn > 3) {
+		lbm_set_error_reason((char*)lbm_error_str_num_args);
+		return ENC_SYM_TERROR;
+	}
+	LBM_CHECK_NUMBER_ALL();
+
+	int pin_tx  = lbm_dec_as_i32(args[0]);
+	int pin_rx  = lbm_dec_as_i32(args[1]);
+	int baud_kb = (argn >= 3) ? lbm_dec_as_i32(args[2]) : 500;
+
+	if (!utils_gpio_is_valid(pin_tx) || !utils_gpio_is_valid(pin_rx)) {
+		lbm_set_error_reason(string_pin_invalid);
+		return ENC_SYM_EERROR;
+	}
+
+	comm_can2_start(pin_tx, pin_rx, baud_kb);
+	return comm_can2_is_running() ? ENC_SYM_TRUE : ENC_SYM_EERROR;
+}
+
+static lbm_value ext_can2_stop(lbm_value *args, lbm_uint argn) {
+	(void)args; (void)argn;
+	comm_can2_stop();
+	return ENC_SYM_TRUE;
+}
+
+static lbm_value ext_can2_use_vesc(lbm_value *args, lbm_uint argn) {
+	LBM_CHECK_ARGN(1);
+
+	if (!is_symbol_true_false(args[0])) {
+		return ENC_SYM_TERROR;
+	}
+
+	comm_can2_use_vesc_decoder(lbm_is_symbol_true(args[0]));
+	return ENC_SYM_TRUE;
+}
+
+static lbm_value ext_can2_send(lbm_value *args, lbm_uint argn, bool is_eid) {
+	if (argn != 2 || !lbm_is_number(args[0])) {
+		return ENC_SYM_EERROR;
+	}
+
+	lbm_value curr = args[1];
+	uint8_t to_send[8];
+	int ind = 0;
+
+	if (lbm_is_array_r(curr)) {
+		lbm_array_header_t *array = (lbm_array_header_t *)lbm_car(curr);
+		ind = array->size;
+		if (ind > 8) {
+			ind = 0;
+		}
+
+		memcpy(to_send, array->data, ind);
+	} else {
+		while (lbm_is_cons(curr)) {
+			lbm_value arg = lbm_car(curr);
+
+			if (lbm_is_number(arg)) {
+				to_send[ind++] = lbm_dec_as_u32(arg);
+			} else {
+				return ENC_SYM_EERROR;
+			}
+
+			if (ind == 8) {
+				break;
+			}
+
+			curr = lbm_cdr(curr);
+		}
+	}
+
+	if (is_eid) {
+		comm_can2_transmit_eid(lbm_dec_as_u32(args[0]), to_send, ind);
+	} else {
+		comm_can2_transmit_sid(lbm_dec_as_u32(args[0]), to_send, ind);
+	}
+
+	return ENC_SYM_TRUE;
+}
+
+static lbm_value ext_can2_send_sid(lbm_value *args, lbm_uint argn) {
+	return ext_can2_send(args, argn, false);
+}
+
+static lbm_value ext_can2_send_eid(lbm_value *args, lbm_uint argn) {
+	return ext_can2_send(args, argn, true);
+}
+
+static lbm_value ext_can2_send_buffer(lbm_value *args, lbm_uint argn) {
+	if (argn < 2 || argn > 3 || !lbm_is_number(args[0])) {
+		lbm_set_error_reason((char*)lbm_error_str_incorrect_arg);
+		return ENC_SYM_EERROR;
+	}
+
+	int id = lbm_dec_as_i32(args[0]);
+	if (id < 0 || id > 255) return ENC_SYM_EERROR;
+
+	if (!lbm_is_array_r(args[1])) {
+		lbm_set_error_reason((char*)lbm_error_str_incorrect_arg);
+		return ENC_SYM_EERROR;
+	}
+
+	uint8_t send_type = 2;
+	if (argn >= 3 && lbm_is_number(args[2])) {
+		send_type = (uint8_t)lbm_dec_as_u32(args[2]);
+		if (send_type > 3) return ENC_SYM_EERROR;
+	}
+
+	lbm_array_header_t *arr = (lbm_array_header_t *)lbm_car(args[1]);
+	if (arr->size > 500) return ENC_SYM_EERROR;
+
+	comm_can2_send_buffer((uint8_t)id, (uint8_t *)arr->data, arr->size, send_type);
+	return ENC_SYM_TRUE;
+}
+
+static lbm_value ext_can2_recv_sid(lbm_value *args, lbm_uint argn) {
+	if (argn > 1 || (argn == 1 && !lbm_is_number(args[0]))) {
+		lbm_set_error_reason((char*)lbm_error_str_incorrect_arg);
+		return ENC_SYM_EERROR;
+	}
+
+	float timeout = -1.0f;
+	if (argn == 1) timeout = lbm_dec_as_float(args[0]);
+
+	can2_recv_sid_cid = lbm_get_current_cid();
+
+	if (timeout > 0.0f) {
+		lbm_block_ctx_from_extension_timeout(timeout);
+	} else {
+		lbm_block_ctx_from_extension();
+	}
+
+	return ENC_SYM_TRUE;
+}
+
+static lbm_value ext_can2_recv_eid(lbm_value *args, lbm_uint argn) {
+	if (argn > 1 || (argn == 1 && !lbm_is_number(args[0]))) {
+		lbm_set_error_reason((char*)lbm_error_str_incorrect_arg);
+		return ENC_SYM_EERROR;
+	}
+
+	float timeout = -1.0f;
+	if (argn == 1) timeout = lbm_dec_as_float(args[0]);
+
+	can2_recv_eid_cid = lbm_get_current_cid();
+
+	if (timeout > 0.0f) {
+		lbm_block_ctx_from_extension_timeout(timeout);
+	} else {
+		lbm_block_ctx_from_extension();
+	}
+
+	return ENC_SYM_TRUE;
+}
+
+#endif /* CONFIG_IDF_TARGET_ESP32C6 */
 
 static lbm_value ext_can_current(lbm_value *args, lbm_uint argn) {
 	LBM_CHECK_NUMBER_ALL();
@@ -1936,6 +2101,10 @@ static lbm_value ext_enable_event(lbm_value *args, lbm_uint argn) {
 		event_can_sid_en = en;
 	} else if (name == sym_event_can_eid) {
 		event_can_eid_en = en;
+	} else if (name == sym_event_can2_sid) {
+		event_can2_sid_en = en;
+	} else if (name == sym_event_can2_eid) {
+		event_can2_eid_en = en;
 	} else if (name == sym_event_data_rx) {
 		event_data_rx_en = en;
 	} else if (name == sym_event_esp_now_rx) {
@@ -6654,6 +6823,17 @@ void lispif_load_vesc_extensions(bool main_found) {
 		lbm_add_extension("can-local-id", ext_can_local_id);
 		lbm_add_extension("can-update-baud", ext_can_update_baud);
 
+#ifdef CONFIG_IDF_TARGET_ESP32C6
+		lbm_add_extension("can2-start",       ext_can2_start);
+		lbm_add_extension("can2-stop",        ext_can2_stop);
+		lbm_add_extension("can2-use-vesc",    ext_can2_use_vesc);
+		lbm_add_extension("can2-send-sid",    ext_can2_send_sid);
+		lbm_add_extension("can2-send-eid",    ext_can2_send_eid);
+		lbm_add_extension("can2-send-buffer", ext_can2_send_buffer);
+		lbm_add_extension("can2-recv-sid",    ext_can2_recv_sid);
+		lbm_add_extension("can2-recv-eid",    ext_can2_recv_eid);
+#endif
+
 		lbm_add_extension("can-msg-age", ext_can_msg_age);
 		lbm_add_extension("canget-current", ext_can_get_current);
 		lbm_add_extension("canget-current-dir", ext_can_get_current_dir);
@@ -6900,6 +7080,9 @@ void lispif_disable_all_events(void) {
 
 	event_can_sid_en = false;
 	event_can_eid_en = false;
+	event_can2_sid_en = false;
+	event_can2_eid_en = false;
+
 	event_data_rx_en = false;
 	event_esp_now_rx_en = false;
 	event_ble_rx_en = false;
@@ -6918,6 +7101,10 @@ void lispif_disable_all_events(void) {
 	esp_now_recv_cid = -1;
 	can_recv_sid_cid = -1;
 	can_recv_eid_cid = -1;
+#ifdef CONFIG_IDF_TARGET_ESP32C6
+	can2_recv_sid_cid = -1;
+	can2_recv_eid_cid = -1;
+#endif
 	recv_data_cid = -1;
 
 	for (int i = 0;i < file_now;i++) {
@@ -6986,6 +7173,51 @@ void lispif_process_can(uint32_t can_id, uint8_t *data8, int len, bool is_ext) {
 		}
 	}
 }
+
+#ifdef CONFIG_IDF_TARGET_ESP32C6
+void lispif_process_can2(uint32_t can_id, uint8_t *data8, int len, bool is_ext) {
+	if (is_ext) {
+		if (can2_recv_eid_cid < 0 && !event_can2_eid_en) return;
+	} else {
+		if (can2_recv_sid_cid < 0 && !event_can2_sid_en) return;
+	}
+
+	lbm_flat_value_t v;
+	if (start_flatten_with_gc(&v, 50 + len)) {
+		f_cons(&v);
+
+		if ((can2_recv_sid_cid < 0 && !is_ext) || (can2_recv_eid_cid < 0 && is_ext)) {
+			f_sym(&v, is_ext ? sym_event_can2_eid : sym_event_can2_sid);
+			f_cons(&v);
+			f_i32(&v, can_id);
+			f_lbm_array(&v, len, data8);
+		} else {
+			f_i32(&v, can_id);
+			f_cons(&v);
+			f_lbm_array(&v, len, data8);
+			f_sym(&v, ENC_SYM_NIL);
+		}
+
+		lbm_finish_flatten(&v);
+
+		if (can2_recv_sid_cid >= 0 && !is_ext) {
+			if (!lbm_unblock_ctx(can2_recv_sid_cid, &v)) {
+				lbm_free(v.buf);
+			}
+			can2_recv_sid_cid = -1;
+		} else if (can2_recv_eid_cid >= 0 && is_ext) {
+			if (!lbm_unblock_ctx(can2_recv_eid_cid, &v)) {
+				lbm_free(v.buf);
+			}
+			can2_recv_eid_cid = -1;
+		} else {
+			if (!lbm_event(&v)) {
+				lbm_free(v.buf);
+			}
+		}
+	}
+}
+#endif /* CONFIG_IDF_TARGET_ESP32C6 */
 
 void lispif_process_custom_app_data(unsigned char *data, unsigned int len) {
 	if (!event_data_rx_en && recv_data_cid < 0) {
