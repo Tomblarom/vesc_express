@@ -68,6 +68,7 @@ static twai_general_config_t g_config = TWAI_GENERAL_CONFIG_DEFAULT(0, 0, TWAI_M
 
 static volatile bool init_done = false;
 static volatile bool sem_init_done = false;
+static volatile bool proc_started = false;
 static volatile bool stop_threads = false;
 static volatile bool stop_rx = false;
 static volatile bool status_running = false;
@@ -87,6 +88,15 @@ static twai_message_t rx_buf[RXBUF_LEN];
 static volatile int rx_write = 0;
 static volatile int rx_read = 0;
 static volatile bool use_vesc_decoder = true;
+
+#ifdef CONFIG_IDF_TARGET_ESP32C6
+static volatile bool can2_use_vesc_dec   = true;
+
+static twai_message_t can2_rx_buf[RXBUF_LEN];
+static volatile int can2_rx_write = 0;
+static volatile int can2_rx_read = 0;
+static volatile int can2_recovery_cnt = 0;
+#endif
 
 static volatile int rx_recovery_cnt = 0;
 
@@ -626,6 +636,26 @@ static void process_task(void *arg) {
 				}
 			}
 		}
+
+#ifdef CONFIG_IDF_TARGET_ESP32C6
+		while (can2_rx_read != can2_rx_write) {
+			twai_message_t *m = &can2_rx_buf[can2_rx_read];
+			can2_rx_read++;
+			if (can2_rx_read >= RXBUF_LEN) {
+				can2_rx_read = 0;
+			}
+
+			lispif_process_can2(m->identifier, m->data, m->data_length_code, m->extd);
+
+			if (can2_use_vesc_dec) {
+				if (!bms_process_can_frame(m->identifier, m->data, m->data_length_code, m->extd)) {
+					if (m->extd) {
+						decode_msg(m->identifier, m->data, m->data_length_code, false);
+					}
+				}
+			}
+		}
+#endif
 	}
 
 	vTaskDelete(NULL);
@@ -806,15 +836,18 @@ void comm_can_start(int pin_tx, int pin_rx) {
 
 	if (!sem_init_done) {
 		ping_sem = xSemaphoreCreateBinary();
-		proc_sem = xSemaphoreCreateBinary();
 		status_sem = xSemaphoreCreateBinary();
 		send_mutex = xSemaphoreCreateMutex();
+		sem_init_done = true;
+	}
+
+	if (!proc_started) {
+		proc_sem = xSemaphoreCreateBinary();
 
 		// The process-task is left running after the first init in case comm_can_stop
 		// is called from it.
 		xTaskCreatePinnedToCore(process_task, "can_proc", 3072, NULL, 8, NULL, tskNO_AFFINITY);
-
-		sem_init_done = true;
+		proc_started = true;
 	}
 
 	update_baud(backup.config.can_baud_rate);
@@ -1448,21 +1481,14 @@ void comm_can_update_pid_pos_offset(int id, float angle_now, bool store) {
 
 #ifdef CONFIG_IDF_TARGET_ESP32C6
 
+static twai_handle_t can2_handle = NULL;
+static SemaphoreHandle_t can2_send_mutex;
+
 static volatile bool can2_init_done      = false;
 static volatile bool can2_sem_init_done  = false;
 static volatile bool can2_stop_threads   = false;
 static volatile bool can2_stop_rx        = false;
 static volatile bool can2_rx_running     = false;
-static volatile bool can2_use_vesc_dec   = true;
-
-static SemaphoreHandle_t can2_proc_sem;
-static SemaphoreHandle_t can2_send_mutex;
-static twai_handle_t can2_handle = NULL;
-
-static twai_message_t can2_rx_buf[RXBUF_LEN];
-static volatile int can2_rx_write = 0;
-static volatile int can2_rx_read = 0;
-static volatile int can2_recovery_cnt = 0;
 
 static twai_timing_config_t can2_t_config = TWAI_TIMING_CONFIG_500KBITS();
 
@@ -1491,7 +1517,7 @@ static void can2_rx_task(void *arg) {
 			if (can2_rx_write >= RXBUF_LEN) {
 				can2_rx_write = 0;
 			}
-			xSemaphoreGive(can2_proc_sem);
+			xSemaphoreGive(proc_sem);
 		}
 
 		twai_status_info_t st;
@@ -1514,31 +1540,6 @@ static void can2_rx_task(void *arg) {
 	}
 
 	can2_rx_running = false;
-	vTaskDelete(NULL);
-}
-
-static void can2_process_task(void *arg) {
-	for (;;) {
-		xSemaphoreTake(can2_proc_sem, pdMS_TO_TICKS(10));
-
-		while (can2_rx_read != can2_rx_write) {
-			twai_message_t *m = &can2_rx_buf[can2_rx_read];
-			can2_rx_read++;
-			if (can2_rx_read >= RXBUF_LEN) {
-				can2_rx_read = 0;
-			}
-
-			lispif_process_can2(m->identifier, m->data, m->data_length_code, m->extd);
-
-			if (can2_use_vesc_dec) {
-				if (!bms_process_can_frame(m->identifier, m->data, m->data_length_code, m->extd)) {
-					if (m->extd) {
-						decode_msg(m->identifier, m->data, m->data_length_code, false);
-					}
-				}
-			}
-		}
-	}
 	vTaskDelete(NULL);
 }
 
@@ -1572,10 +1573,17 @@ void comm_can2_start(int pin_tx, int pin_rx, int baud_kbits) {
 	}
 
 	if (!can2_sem_init_done) {
-		can2_proc_sem      = xSemaphoreCreateBinary();
 		can2_send_mutex    = xSemaphoreCreateMutex();
-		xTaskCreatePinnedToCore(can2_process_task, "can2_proc", 2048, NULL, 8, NULL, tskNO_AFFINITY);
 		can2_sem_init_done = true;
+	}
+
+	if (!proc_started) {
+		proc_sem = xSemaphoreCreateBinary();
+
+		// The process-task is left running after the first init in case comm_can_stop
+		// is called from it.
+		xTaskCreatePinnedToCore(process_task, "can_proc", 3072, NULL, 8, NULL, tskNO_AFFINITY);
+		proc_started = true;
 	}
 
 	can2_t_config = can2_timing_from_kbits(baud_kbits);
