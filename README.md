@@ -7,32 +7,17 @@ The is the codebase for the VESC Express, which is a WiFi and Bluetooth-enabled 
 Instructions for how to set up the toolchain can be found here:
 [https://docs.espressif.com/projects/esp-idf/en/latest/esp32c3/get-started/linux-macos-setup.html](https://docs.espressif.com/projects/esp-idf/en/latest/esp32c3/get-started/linux-macos-setup.html)
 
-**Note**  
-
-## ESP-IDF Version Compatibility and Known Issues
-
-**Important notes:**
-
-- On ESP-IDF 5.2.2:
-	- ESP32-C6: WiFi does not work due to upstream bugs in this release.
-	- PSRAM: There are known issues with PSRAM support on all targets when building with 5.2.2.
-
-- For full PSRAM and WiFi support (including ESP32-C6), use ESP-IDF version **5.5.4**. On this version, PSRAM and all major features work correctly.
-	- However, 5.5.4 is **not officially supported**, so use it at your own risk.
-
-If you encounter issues with WiFi on C6 or PSRAM on any target, try upgrading to ESP-IDF 5.5.4.
-
-### Get Release 5.2.2
+### Get Release 5.5.4
 
 The instructions linked above will install the master branch of ESP-IDF. To install the stable release you can navigate to the installation directory and use the following commands:
 
 ```bash
-git clone -b v5.2.2 --recursive https://github.com/espressif/esp-idf.git esp-idf-v5.2.2
-cd esp-idf-v5.2.2/
+git clone -b v5.5.4 --recursive https://github.com/espressif/esp-idf.git esp-idf-v5.5.4
+cd esp-idf-v5.5.4/
 ./install.sh esp32c3 esp32c6 esp32s3
 ```
 
-At the moment development is done using the stable 5.2.2-release.
+At the moment development is done using the stable 5.5.4-release. Note that different IDF-versions are very likely to cause compatibility issues, so it is strongly recommended to use version 5.5.4.
 
 ## Building
 
