@@ -67,7 +67,6 @@ set(COMPONENT_SRCS
 "wifi/lispif_wifi_extensions.c"
 
 "ble/custom_ble.c"
-"ble/lispif_ble_extensions.c"
 
 "rgbled/lispif_rgbled_extensions.c"
 
@@ -100,6 +99,12 @@ set(COMPONENT_SRCS
 
 "lowzip/lowzip.c"
 )
+
+if(NOT CONFIG_IDF_TARGET_ESP32P4)
+    list(APPEND COMPONENT_SRCS
+        "ble/lispif_ble_extensions.c"
+    )
+endif()
 
 set(COMPONENT_ADD_INCLUDEDIRS
 "."
