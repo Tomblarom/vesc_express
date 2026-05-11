@@ -365,10 +365,6 @@ void disp_st7701_reset(void) {
 }
 
 lbm_value disp_st7701_ext_orientation(lbm_value *args, lbm_uint argn) {
-#if !SOC_MIPI_DSI_SUPPORTED
-    (void)args; (void)argn;
-    return ENC_SYM_TRUE;
-#else
     LBM_CHECK_ARGN_NUMBER(1);
     int rot = lbm_dec_as_i32(args[0]);
     if (rot < 0 || rot > 3) {
@@ -378,15 +374,15 @@ lbm_value disp_st7701_ext_orientation(lbm_value *args, lbm_uint argn) {
 
     m_rotation = rot;
     return ENC_SYM_TRUE;
-#endif
 }
 
 void disp_st7701_init(int pin_rst, int lane_mbps) {
     m_pin_rst = pin_rst;
     m_lane_mbps = lane_mbps;
+    
+    disp_st7701_init_internal();
 
     lbm_add_extension("ext-disp-orientation", disp_st7701_ext_orientation);
-    disp_st7701_init_internal();
 }
 
 static void disp_st7701_init_internal(void) {
