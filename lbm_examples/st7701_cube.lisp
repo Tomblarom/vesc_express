@@ -1,6 +1,6 @@
 (import "font_16_26.bin" 'font)
 
-(disp-load-st7701 5 1800)
+(disp-load-st7701 5 1200)
 (ext-disp-orientation 0)
 
 (gpio-configure 23 'pin-mode-out)
